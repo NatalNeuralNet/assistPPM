@@ -1,7 +1,6 @@
 streamlit
 astrapy
 python-dotenv
-os
 openAI
 pydantic
 itertools
