@@ -9,8 +9,8 @@ from itertools import product
 from dotenv import load_dotenv
 import os
 
-
-client = OpenAI()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(OPENAI_API_KEY)
 
 # Load environment variables from the .env file
 load_dotenv()
