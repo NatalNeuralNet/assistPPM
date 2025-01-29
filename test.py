@@ -1,9 +1,8 @@
 
 import streamlit as st
-from data import schools, majors
+from data import schools, majors, goals
 from functions import *
 import pandas as pd
-
 
 # SESSION STATE INITIALIZERS
     # If not found in st.session_state, create them (similar to class attributes)
@@ -29,6 +28,11 @@ if "max_turns" not in st.session_state:
 # Flag to indicate looping state
 if "active_looping" not in st.session_state:
     st.session_state.active_looping = False
+    
+# Flag to indicate looping state
+if "transfer_agent" not in st.session_state:
+    st.session_state.transfer_agent = False
+    
 
 # SIDEBAR LOGIC
 
@@ -43,11 +47,12 @@ profile = st.session_state.student_profile
 # Name
 with st.sidebar.expander("Name", expanded=True):
     name = st.text_input("Enter Name", value=profile["name"])
-with st.sidebar.expander("Completed Courses"):
-    completed_courses = (profile["completed_courses"])
 # Current School
 with st.sidebar.expander("Current School"):
     current_school = st.selectbox("Enter Current School", schools, index=schools.index(profile["current_school"]))
+# Completed Courses
+with st.sidebar.expander("Completed Courses"):
+    completed_courses = (profile["completed_courses"])
 # GPA
 with st.sidebar.expander("G.P.A."):
     gpa = st.number_input("Enter G.P.A.", min_value=0.0, max_value=4.0, step=0.1, value=round(profile["gpa"], 2))
@@ -57,8 +62,10 @@ with st.sidebar.expander("Major"):
 # Transfer Schools
 with st.sidebar.expander("Transfer Schools"):
     transfer_school = st.multiselect("Enter Transfer School(s)", schools, default=profile["transfer_school"])
+
+# Goals
 with st.sidebar.expander("Goals"):
-    goals = st.multiselect("Enter Goal", profile['goals'],default=profile["goals"])
+    goals = st.multiselect("Enter Goal", goals,default=profile["goals"])
 # notes
 with st.sidebar.expander("notes"):
     notes = (profile["notes"])
@@ -70,14 +77,14 @@ def display_profile_field(field_name, field_label):
         # Dropdown menu to select an item
         if st.session_state.student_profile[field_name]:
             selected_index = st.selectbox(
-                f"Select a {field_label[:-1]} to view or delete:",
+                f"Select a {field_label[:-1]}:",
                 options=range(len(st.session_state.student_profile[field_name])),
                 format_func=lambda i: st.session_state.student_profile[field_name][i],
                 key=f"{field_name}-dropdown"
             )
 
             # Option to delete the selected item
-            if st.button(f"Delete Selected {field_label[:-1]}", key=f"delete-{field_name}-btn"):
+            if st.button(f"Delete {field_label[:-1]}", key=f"delete-{field_name}-btn"):
                 st.session_state.student_profile[field_name].pop(selected_index)
                 st.rerun()
         else:
@@ -94,6 +101,7 @@ def display_profile_field(field_name, field_label):
 with st.sidebar.expander("Manage Profile Details"):
     display_profile_field("notes", "Notes")
     display_profile_field("completed_courses", "Completed Courses")
+
 
 # Hardcoded checks
 profile['current_school']="Merced College"
@@ -131,7 +139,6 @@ initial_message = (
     # Intial prompt is necessary if we wish to structure intial message to LLM beyond simple profile changes.
 with st.sidebar.expander("Initial Prompt", expanded=False):
     initial_prompt = st.text_area("Edit Prompt", value=initial_message)
-
 
 plan =[]
 
@@ -320,10 +327,11 @@ if 'Transfer' in profile['goals']:
     profile['education_plan']=plan
 
 
+
 # CHAT CONTAINER
 
 # Title
-st.title("Test")
+st.title("Project Pathways Mapper")
 
 # Display the initial prompt if it's the first interaction
     # Updates with intial message changes
@@ -331,9 +339,6 @@ st.title("Test")
     
 # FIRST TURN LOGIC
 if st.session_state.turn_count == 0:
-    
-    # Intial prompt subheader
-    st.subheader("Initial Prompt")
     
     # Displays but doesnt appened intial message so we can edit it further 
     display_message("user", initial_message, "student.png")
@@ -409,16 +414,20 @@ with col1:
         # Prevents the button from taking any action if turn count exceeds max turns
         while st.session_state.turn_count >= st.session_state.max_turns:
             st.rerun()
+        
+        #if 'Transfer' in profile['goals']:
+        agreement=get_articulation_agreement(current_school, transfer_school, major)
+        a = transferAgent(initial_message, profile, agreement)
 
         # FIRST TURN LOGIC
         if st.session_state.turn_count == 0:
+
         
             with st.spinner("The counselor is thinking..."):
-                agreement=get_articulation_agreement(profile['current_school'], profile['transfer_school'], profile['major'])
-                print(agreement)
-                intial_response = (advisorStep(initial_message, profile,agreement))
+                intial_response = (advisorStep(initial_message, profile,a))
                 st.session_state.messages.append({"role":"user", "content": initial_message})
                 st.session_state.turn_count += 1
+                #st.session_state.messages.append({"role": "assistant", "content": a})
                 st.session_state.messages.append({"role": "assistant", "content": intial_response})
                 st.session_state.turn_count += 1
                 
@@ -432,8 +441,7 @@ with col1:
         # Counselor turn    
         elif (st.session_state.turn_count % 2) != 0:
             with st.spinner("The counselor is thinking..."):
-                agreement=get_articulation_agreement(profile['current_school'], profile['transfer_school'], profile['major'])
-                counselorResponse = (advisorStep(st.session_state.messages[-1]["content"], profile,agreement))
+                counselorResponse = (advisorStep(st.session_state.messages[-1]["content"], profile,a))
                 st.session_state.messages.append({"role":"assistant", "content": counselorResponse})
                 st.session_state.turn_count += 1
                 
