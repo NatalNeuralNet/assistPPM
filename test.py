@@ -42,6 +42,8 @@ profile = st.session_state.student_profile
 # Name
 with st.sidebar.expander("Name", expanded=True):
     name = st.text_input("Enter Name", value=profile["name"])
+with st.sidebar.expander("Completed Courses"):
+    completed_courses = (profile["completed_courses"])
 # Current School
 with st.sidebar.expander("Current School"):
     current_school = st.selectbox("Enter Current School", schools, index=schools.index(profile["current_school"]))
@@ -54,15 +56,13 @@ with st.sidebar.expander("Major"):
 # Transfer Schools
 with st.sidebar.expander("Transfer Schools"):
     transfer_school = st.multiselect("Enter Transfer School(s)", schools, default=profile["transfer_school"])
-# Goals
-with st.sidebar.expander("goals"):
-    goals = (profile["goals"])
+
 # Transfer Schools
 with st.sidebar.expander("Transfer Schools"):
     transfer_school = st.multiselect("Enter Transfer School(s)", schools, default=profile["transfer_school"])
 # Goals
 with st.sidebar.expander("Goals"):
-    goals = st.multiselect("Enter Goal", goals,default=profile["goals"])
+    goals = st.multiselect("Enter Goal", profile['goals'],default=profile["goals"])
 # notes
 with st.sidebar.expander("notes"):
     notes = (profile["notes"])
