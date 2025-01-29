@@ -300,3 +300,172 @@ def get_articulation_agreement(current_school, transfer_school, major):
             })
 
     return test
+
+'''
+VERSION 2 functions
+
+'''
+
+
+# Pydantic Structured Output
+class GeneralEdGenerator(BaseModel):
+    class Course(BaseModel):
+        uc_area: str
+        course: str
+        course_title: str
+        units: float
+        #options_per_area: list[str]
+    gen_ed_plan: list[Course]
+    completed_courses: list[Course]
+    total_units: float
+# General Ed Planner     
+def general_ed_planner2(prompt, student_profile, course_list,current_plan):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulation agreement passed to give accurate transfer suggestions
+            this will be pulled from a database, as the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+    transfer_logic="Complete the following seven-course pattern requirement, earning a grade of C or better in each course: Two transferable college courses (3 semester or 4-5 quarter units each) \
+    in English composition (Area UC-E), and One transferable college course (3 semester or 4-5 quarter units) in mathematical concepts and quantitative reasoning (Area UC-M), and; Four transferable \
+    college courses (3 semester or 4-5 quarter units each) chosen from at least two of the following subject areas: the arts and humanities (Area UC-H), the social and behavioral sciences (Area UC-B),\
+    and the physical and biological sciences (Area UC-S). Courses may be double counted once per course if the major course satisfies a general education area. This goes for completed courses and also future planned courses."
+    
+    
+    completion = client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are an education plan generator specializing in college transfer students. following transfer logic {transfer_logic}  assit in building a general education plan. \
+            Use currentPlan{current_plan} courses to search Admission Eligibility Course List: {course_list} fill any aplicable spots. Apply correct uc areas Fill any remaning with approptiate courses from Admission Eligibility Course List: {course_list}. Priotize using completed courses for requirments if applicable."
+            },
+            {"role": "user", "content": prompt}
+        ],
+        response_format=GeneralEdGenerator
+    )
+    return completion.choices[0].message.parsed
+
+# Pydantic Structured Output
+class MajorEdGenerator(BaseModel):
+    class Course(BaseModel):
+        uc_area: str
+        course: str
+        course_title: str
+        units: float
+    completed_courses: list[str]
+    required_for_transfer: list[Course]
+    additional_prep_courses: list[Course]
+    major_ed_plan: list[Course]
+    explanation: str
+    total_units: float
+    
+
+# Pydantic Structured Output
+class CourseData(BaseModel):
+    sending_Institution_course: str
+    sending_Institution_course_title: str
+    units: float
+    receiving_Institution_course: str
+    
+
+# Pydantic Structured Output    
+class EdPlan(BaseModel):
+    education_plan: list[CourseData]
+    total_units: float
+    completed_courses: list[CourseData]
+    
+    
+# Major Ed Planner
+def transferAgent2(prompt, student_profile, articulation_agreement):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulatio an agreement passed to give accurate transfer suggestions
+            this will be pulled from a database,s the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+    
+    transfer_logic=(f"Thank you for your interest in UC Merced! For admission to the Computer Science and Engineering, B.S. major, students must earn an overall transferrable GPA of 2.4 or better, and complete classes articulated with the following UC Merced courses by the end of spring term prior to fall enrollment or by the end of fall term prior to spring enrollment. For Admission purposes all major preparation courses require a 'C' or better. REQUIRED major preparation courses: CSE 022, a grade of B or better must be earned. CSE 030, MATH 021, MATH 022, MATH 023, MATH 024 PHYS 008 & PHYS 008L PHYS 009 & PHYS 009L, WRI 001 and WRI 010 Additional Major Preparation Recommended Prior to Transfer: CSE 015, CSE 022*, CSE 024*, CSE 030*, CSE 031, ENGR 065, ENGR 091, MATH 032, or ENGR 80 *Dual Counting between CSE 022 and CSE 024 is permissible granted that the same course articulation exist for all sending courses. AP Exam Score & Course Exemptions An AP Computer Science: Comp Science A score of 5 exempts CSE 022 An AP Mathematics: Calculus AB score of 4 or 5 exempts MATH 021 An AP Mathematics: Calculus BC score of 3 exempts MATH021 An AP Mathematics: Calculus BC score of 4 or 5 exempts MATH 021 and MATH 022 An AP Mathematics: Calculus BC Subscore AB score 3 or higher exempts MATH 021 An AP Physics: Physics C: Mechanics: score of 5 exempts PHYS 008 and PHYS 008L UC Merced Advance Placement (AP) and International Baccalaureate (IB) credit policies are detailed in the link below: Advance Placement (AP) and International Baccalaureate (IB) Examinations")
+
+    completion = client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are an education plan generator specializing in college transfer students following transfer logic {transfer_logic}. \
+            using completed courses: {student_profile['completed_courses']} and articulation agreements: {articulation_agreement} \
+            build an education plan of remaing required courses for transfer, and providing  uc equivalent courses.\
+            if a {student_profile['completed_courses']} satisfies a required transfer we dont need to fill the area.\
+            if {student_profile['education_plan']} is already built use {prompt} to refine.\
+          "
+            },
+            {"role": "user", "content": prompt}
+        ],
+        response_format=EdPlan
+    )
+    return completion.choices[0].message.parsed
+# Major check
+def transferAgentCheck(prompt, student_profile, articulation_agreement,schedule):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulatio an agreement passed to give accurate transfer suggestions
+            this will be pulled from a database,s the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+    
+    transfer_logic=(f"Thank you for your interest in UC Merced! For admission to the Computer Science and Engineering, B.S. major, students must earn an overall transferrable GPA of 2.4 or better, and complete classes articulated with the following UC Merced courses by the end of spring term prior to fall enrollment or by the end of fall term prior to spring enrollment. For Admission purposes all major preparation courses require a 'C' or better. REQUIRED major preparation courses: CSE 022, a grade of B or better must be earned. CSE 030 MATH 021 MATH 022 MATH 023 MATH 024 PHYS 008 & 008L PHYS 009 & 009L, WRI 001 and WRI 010 Additional Major Preparation Recommended Prior to Transfer: CSE 015, CSE 022*, CSE 024*, CSE 030*, CSE 031 ENGR 065 ENGR 091 MATH 032 or ENGR 080 *Dual Counting between CSE 022 and CSE 024 is permissible granted that the same course articulation exist for all sending courses. AP Exam Score & Course Exemptions An AP Computer Science: Comp Science A score of 5 exempts CSE 022 An AP Mathematics: Calculus AB score of 4 or 5 exempts Math 021 An AP Mathematics: Calculus BC score of 3 exempts MATH 021 An AP Mathematics: Calculus BC score of 4 or 5 exempts Math 021 and Math 022 An AP Mathematics: Calculus BC Subscore AB score 3 or higher exempts Math 021 An AP Physics: Physics C: Mechanics: score of 5 exempts PHYS 008 and PHYS 008L UC Merced Advance Placement (AP) and International Baccalaureate (IB) credit policies are detailed in the link below: Advance Placement (AP) and International Baccalaureate (IB) Examinations")
+
+    completion = client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are to critque a student schedule {schedule}, ensure it follows {transfer_logic}. \
+            using transfer agreements: {articulation_agreement} make sure we have met transfer requiremnets. \
+            Courses can not be combined as one. Seperate any combined course entries into indvidual course entries. Remove recommend courses we only want required. If all required courses are not found use transfer agreements {student_profile['completed_courses']} to fill. Base any additons around sending_Institution. In no changes are made then suggest {schedule}. \
+            in addition to any changes suggest any non changes from the orignal plan as well.\
+          "
+            },
+            {"role": "user", "content": prompt}
+        ],
+        
+    )
+    return completion.choices[0].message.content
+
+
+# Pydantic Structured Output    
+class FinalEdPlan(BaseModel):
+    education_plan: list[CourseData]
+    total_units: float
+    removed: list[CourseData]    
+    
+# Major Ed Planner
+def scheduleGlue(prompt, student_profile, plan):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulatio an agreement passed to give accurate transfer suggestions
+            this will be pulled from a database,s the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+
+    completion = client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"Remove duplicate entries from the education plan{plan} ensuring courses only appear once in our educational plan.\
+          "
+            },
+            {"role": "user", "content": prompt}
+        ],
+        response_format=FinalEdPlan
+    )
+    return completion.choices[0].message.parsed
