@@ -2,6 +2,7 @@
 import streamlit as st
 from data import schools, majors
 from functions import *
+import pandas as pd
 
 
 # SESSION STATE INITIALIZERS
@@ -131,27 +132,198 @@ initial_message = (
 with st.sidebar.expander("Initial Prompt", expanded=False):
     initial_prompt = st.text_area("Edit Prompt", value=initial_message)
 
-[{
-	"resource": "/workspaces/assistPPM/test.py",
-	"owner": "python",
-	"code": {
-		"value": "reportUndefinedVariable",
-		"target": {
-			"$mid": 1,
-			"path": "/microsoft/pyright/blob/main/docs/configuration.md",
-			"scheme": "https",
-			"authority": "github.com",
-			"fragment": "reportUndefinedVariable"
-		}
-	},
-	"severity": 4,
-	"message": "\"completed_courses\" is not defined",
-	"source": "Pylance",
-	"startLineNumber": 128,
-	"startColumn": 26,
-	"endLineNumber": 128,
-	"endColumn": 43
-}]
+# intial prompt for sidebar
+    # Sperate from the others so that the when [profile]changes are applied and streamlit reruns
+    # the intial message is updated which will update the intial prompt
+    # Intial prompt is necessary if we wish to structure intial message to LLM beyond simple profile changes.
+with st.sidebar.expander("Initial Prompt", expanded=False):
+    initial_prompt = st.text_area("Edit Prompt", value=initial_message)
+
+plan =[]
+
+if 'Transfer' in profile['goals']:
+    
+    
+    data = pd.DataFrame({
+        'completed': [],
+        'planned': [],
+        'Courses': []
+    })
+    
+    # Get Collection [TEXT]
+    general_ed = database.get_collection("GENERAL_ED")
+    
+    # UC Transfer Admission Eligibility Courses (Cursor Object)
+    class_list = general_ed.find({"course": "four"}, projection={"uc_areas":True, "school":True, "semester_units":True})
+    #print(class_list)
+    # Iterate through cursor object to grab full document text
+    for result in class_list:
+        info = (" ").join([result['uc_areas'], result['semester_units'], result['school'] ])
+    
+    # articulation agreement
+    agreement=get_articulation_agreement(current_school, transfer_school, major)
+    # major education plan generation
+    a = transferAgent2(initial_message, profile, agreement)
+    # education plan extraction
+    cc = (a.education_plan)
+    cd = (a.completed_courses)
+    degree_units = 0
+    st.write("COMPLETED COURSES")
+    for thing in cd:
+        text=(f"Courses: {thing.sending_Institution_course} {thing.sending_Institution_course_title} Units:{thing.units} articulated by {thing.receiving_Institution_course}")
+        st.write(text)
+        plan.append(text)
+        degree_units += thing.units
+        
+        # New row as a DataFrame
+        new_row = pd.DataFrame({'completed': [thing.units], 'planned': [0],'Courses': [thing.sending_Institution_course], })
+
+        # Concatenate the new row
+        data = pd.concat([data, new_row], ignore_index=True)
+        
+        
+        st.bar_chart(data, 
+             y=['completed', 'planned'], y_label="Units",
+             x="Courses", 
+             color=['#0066b9','#ffb500',])
+    
+
+
+    #plan.append(profile['completed_courses'])
+    # unit check
+    #total=0
+    # header
+    st.write("MAJOR PLAN")
+    # loop through items in education plan
+    for thing in cc:
+        text=(f"Course: {thing.sending_Institution_course} {thing.sending_Institution_course_title} Units:{thing.units} articulated by {thing.receiving_Institution_course}")
+        st.write(text)
+        plan.append(text)
+        degree_units += thing.units
+        
+        # New row as a DataFrame
+        new_row = pd.DataFrame({'completed': [0], 'planned': [thing.units],'Courses': [thing.sending_Institution_course], })
+
+        # Concatenate the new row
+        data = pd.concat([data, new_row], ignore_index=True)
+        
+        st.bar_chart(data, 
+            y=['completed', 'planned'],  y_label="Units",
+            x="Courses", 
+            color=['#0066b9','#ffb500',])
+
+    # unit check
+    st.write (f"Unit check: {a.total_units}")
+    st.write (f"Unit check: {degree_units}")
+    
+    profile['education_plan']=plan
+    
+    # schedule check
+    check = transferAgentCheck("Please help me fix my schedule", profile,agreement, plan)
+    # print to manually check
+    st.write (f"SCHEDULE CRITQUE: {check}")
+    # provide student schedule to student profile as context
+    profile['education_plan']=plan
+    # re generate education plan based on schedule check
+    a = transferAgent2(check, profile, agreement)
+    # re declare education plan
+    cc = (a.education_plan)
+    #print(cc)
+    # reset total unit check
+    degree_units=0
+    profile['education_plan']=[]
+    plan.clear()
+    
+    data = pd.DataFrame(columns=data.columns)
+
+    st.write("COMPLETED COURSES")
+    for thing in cd:
+        text=(f"Completed Courses: {thing.sending_Institution_course} {thing.sending_Institution_course_title} Units:{thing.units} articulated by {thing.receiving_Institution_course}")
+        st.write(text)
+        plan.append(text)
+        degree_units += thing.units
+        
+        # New row as a DataFrame
+        new_row = pd.DataFrame({'completed': [thing.units], 'planned': [0],'Courses': [thing.sending_Institution_course], })
+
+        # Concatenate the new row
+        data = pd.concat([data, new_row], ignore_index=True)
+        
+        st.bar_chart(data, 
+            y=['completed', 'planned'],  y_label="Units",
+            x="Courses", 
+            color=['#0066b9','#ffb500',])
+        
+
+
+    # header
+    st.write("UPDATED MAJOR PLAN")
+    # loop through items in education plan
+    for thing in cc:
+        text= (f"Course: {thing.sending_Institution_course} {thing.sending_Institution_course_title} Units: {thing.units}; articulated by {thing.receiving_Institution_course}")
+        st.write(text)
+        plan.append(text)
+        degree_units += thing.units
+        
+        # New row as a DataFrame
+        new_row = pd.DataFrame({'completed': [0], 'planned': [thing.units],'Courses': [thing.sending_Institution_course], })
+
+        # Concatenate the new row
+        data = pd.concat([data, new_row], ignore_index=True)
+        
+        st.bar_chart(data, 
+            y=['completed', 'planned'],  y_label="Units",
+            x="Courses", 
+            color=['#0066b9','#ffb500',])
+        
+        
+    #total unit check
+    st.write(f"UPDATED Unit check: {a.total_units}")
+    st.write(f"UPDATED Unit check: {degree_units}")
+
+
+    # manually check new education plan
+    profile['education_plan']=plan
+
+
+
+
+
+    # general ed planner
+    b=general_ed_planner2("", profile, info,plan)
+    dd = (b.gen_ed_plan)
+    # header
+    st.write("GENERAL EDUCATION PLAN")
+    for thing in dd:
+        text = (f"Course: {thing.course} {thing.course_title} Units: {thing.units}; UC Area: {thing.uc_area}")
+        st.write(text)
+        plan.append(text)
+        
+
+            # New row as a DataFrame
+        new_row = pd.DataFrame({'completed': [0], 'planned': [thing.units],'Courses': [thing.course], })
+
+            # Concatenate the new row
+        data = pd.concat([data, new_row], ignore_index=True)
+        
+        degree_units += thing.units
+        
+        st.bar_chart(data, 
+             y=['completed', 'planned'],  y_label="Units",
+             x="Courses", 
+             color=['#0066b9','#ffb500',])
+        
+    st.write(b.total_units)
+    st.write(degree_units)
+    
+    st.bar_chart(data, 
+             y=['completed', 'planned'], 
+             x="Courses", 
+             color=['#0066b9','#ffb500',])
+
+
+    profile['goals']=None
+    profile['education_plan']=plan
 
 
 # CHAT CONTAINER
