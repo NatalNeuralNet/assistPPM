@@ -66,7 +66,16 @@ with st.sidebar.expander("characteristics"):
 # Goals
 with st.sidebar.expander("goals"):
     goals = (profile["goals"])
+# Transfer Schools
+with st.sidebar.expander("Transfer Schools"):
+    transfer_school = st.multiselect("Enter Transfer School(s)", schools, default=profile["transfer_school"])
 
+# Goals
+with st.sidebar.expander("Goals"):
+    goals = st.multiselect("Enter Goal", goals,default=profile["goals"])
+# notes
+with st.sidebar.expander("notes"):
+    notes = (profile["notes"])
 
 
 # Functions to display custom text field buttons
@@ -97,12 +106,16 @@ def display_profile_field(field_name, field_label):
 
 # Consolidate all fields into a single section
 with st.sidebar.expander("Manage Profile Details"):
-    display_profile_field("goals", "Goals")
-    display_profile_field("motivation", "Motivations")
-    display_profile_field("challenges", "Challenges")
-    display_profile_field("characteristics", "Characteristics")
+    display_profile_field("notes", "Notes")
+    display_profile_field("completed_courses", "Completed Courses")
 
-
+# Hardcoded checks
+profile['current_school']="Merced College"
+profile['transfer_school']=["University of California, Merced"]
+profile['major']="Computer Science and Engineering, B.S."
+current_school=profile['current_school']
+transfer_school=(profile['transfer_school'])
+major=profile['major']
 
 # Update profile with changes
 profile.update({
@@ -111,10 +124,10 @@ profile.update({
     "gpa": gpa,
     "major": major,
     "transfer_school": transfer_school,
-    "motivation": motivation,
-    "challenges": challenges,
-    "characteristics": characteristics,
-    "goals": goals
+    "notes": notes,
+    "completed_courses": completed_courses,
+    "goals": goals,
+    "education_plan": []
 })
 
 # Initial message
@@ -123,10 +136,7 @@ initial_message = (
     f"Hello, I am {profile['name']}. My major is {profile['major']}. "
     f"I currently attend {profile['current_school']} with a GPA of {profile['gpa']}. "
     f"I would like to transfer to {'; '.join(profile['transfer_school'])}. "
-    f"Motivations: {'; '.join(profile['motivation'])}. "
-    f"Challenges: {'; '.join(profile['challenges'])}. "
-    f"Characteristics: {'; '.join(profile['characteristics'])}. "
-    f"Goals: {'; '.join(profile['goals'])}."
+    f"Notes: {'; '.join(profile['notes'])}. "
 )
 
 # intial prompt for sidebar
@@ -135,6 +145,28 @@ initial_message = (
     # Intial prompt is necessary if we wish to structure intial message to LLM beyond simple profile changes.
 with st.sidebar.expander("Initial Prompt", expanded=False):
     initial_prompt = st.text_area("Edit Prompt", value=initial_message)
+
+[{
+	"resource": "/workspaces/assistPPM/test.py",
+	"owner": "python",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pyright/blob/main/docs/configuration.md",
+			"scheme": "https",
+			"authority": "github.com",
+			"fragment": "reportUndefinedVariable"
+		}
+	},
+	"severity": 4,
+	"message": "\"completed_courses\" is not defined",
+	"source": "Pylance",
+	"startLineNumber": 128,
+	"startColumn": 26,
+	"endLineNumber": 128,
+	"endColumn": 43
+}]
 
 
 # CHAT CONTAINER

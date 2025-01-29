@@ -45,13 +45,104 @@ def student(prompt, student_profile):
         f"My name is {student_profile['name']}. "
         f"I am currently attending {student_profile['current_school']} with a GPA of {student_profile['gpa']}. "
         f"My major is {student_profile['major']}, and I plan to transfer to {(', ').join(student_profile['transfer_school'])}. "
-        f"My motivation is {student_profile['motivation']}, and my challenges are {student_profile['challenges']}. "
-        f"My characteristics are {student_profile['characteristics']}, and my goals are {(', ').join(student_profile['goals'])}."
+        f"I have completed courses {student_profile['completed_courses']}. "
+        f"Notes effecting my transfer proccess: {(', ').join(student_profile['notes'])}. My goals are {(', ').join(student_profile['goals'])}"
+        f"My current planned courses {student_profile['education_plan']}"        
     )
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": f"You are a student with the following profile: {profile_description}. Use this to inquire about your academic journey. Focus on your transfer journey"},
+            {"role": "system", "content": f"You are a student with the following profile: {profile_description}. Use this to inquire about your academic journey. Focus on your transfer journey. \
+             Your are highly interested in building an educational plan. Focus on using your interests to decided on what courses to consider taking next. Focus on using the new insights to generate new branches of conversation. \
+             Highest priorty. Test the counselor for knowledge of course equivalency."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return completion.choices[0].message.content
+
+def transferAgentFIRST(prompt, student_profile, articulation_agreement):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulation agreement passed to give accurate transfer suggestions
+            this will be pulled from a database, as the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+    
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are an education plan generator specializing in college transfer students. \
+            Using student profile as context: {student_profile}. \
+            Compare completed courses: {student_profile['completed_courses']} and transfer agreements: {articulation_agreement} \
+            Determine and inform the student of remaining courses needed to transfer and their relevant equivalent courses.\
+            Present additonal transferable courses available for a complete and concise educational plan.\
+            Determine equivalent courses based off relevant transfer agreements."
+            },
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return completion.choices[0].message.content
+
+def transferAgent(prompt, student_profile, articulation_agreement):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulation agreement passed to give accurate transfer suggestions
+            this will be pulled from a database, as the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+    
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are an education plan generator specializing in college transfer students. \
+            Using student profile as context: {student_profile}. \
+            Using {student_profile['education_plan']} and transfer agreements: {articulation_agreement} for questions regarding equivalent courses. \
+             Help student with question regarding their education plan. Help students with questions regarding equivalent courses.\
+            Help students with discussions regarding additonal courses not currently in their education plan. Incorporate {student_profile['notes']}\
+            Determine equivalent courses based off relevant transfer agreements."
+            },
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return completion.choices[0].message.content
+
+def general_ed_planner(prompt, student_profile, course_list):
+    '''
+    Args:
+        prompt (str): message that is being responded to
+        profile (dict{str : *}): student profile to to give context to a system prompt dictating how a simulate student should act
+        agreement (dict{str : str}): articulation agreement passed to give accurate transfer suggestions
+            this will be pulled from a database, as the couselor is giving advice only they need this passed not the student
+
+    Returns: 
+        (str): response to prompt
+    '''
+    transfer_logic="Complete the following seven-course pattern requirement, earning a grade of C or better in each course: Two transferable college courses (3 semester or 4-5 quarter units each) \
+    in English composition (Area UC-E), and One transferable college course (3 semester or 4-5 quarter units) in mathematical concepts and quantitative reasoning (Area UC-M), and; Four transferable \
+    college courses (3 semester or 4-5 quarter units each) chosen from at least two of the following subject areas: the arts and humanities (Area UC-H), the social and behavioral sciences (Area UC-B),\
+    and the physical and biological sciences (Area UC-S)."
+    
+    
+    
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": f"You are an education plan generator specializing in college transfer students. following transfer logic {transfer_logic} to assit in guidance \
+            Compare completed courses: {student_profile['completed_courses']} and Admission Eligibility Course List: {course_list} \
+            Determine and inform the student of remaining courses needed to complete the seven-course pattern. \
+            Organize listings by UC Areas\
+            - **One Course in Mathematical Concepts and Quantitative Reasoning (Area UC-M):** - **Completed:** MATH-04A Calculus I - **Remaining Needed:** None \
+            List all possible courses per Area before deciding on a plan. \
+            Present a final complete and concise educational plan adhering to logic. Always include number of units. \ "
+            },
             {"role": "user", "content": prompt}
         ]
     )
@@ -71,7 +162,11 @@ def advisorStep(prompt, student_profile, articulation_agreement):
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": f"You are an academic advisor specializing in transfer students. You have access to their profile {student_profile} and transfer agreements for desired schools{articulation_agreement}"},
+            {"role": "system", "content": f"You are an academic advisor specializing in helping transfer students. \
+            Using a student profile: {student_profile} and a summarized student education plan {articulation_agreement} as context\
+            help student with their academic plans and journey.\
+            Focus on intergrating {student_profile['notes']} and their new educational plan. Determine equivalent courses based off relevant transfer agreements."
+            },
             {"role": "user", "content": prompt}
         ]
     )
@@ -95,18 +190,14 @@ def initialize_student_profile():
         "gpa": 3.8,
         "major": "Computer Science, B.S.",
         "transfer_school": ["University of California, Merced", "California State University, Stanislaus"],
-        "motivation": ["Interested in innovative, flexible computer science courses that fit her busy schedule", "Transferrable courses to Stanislaus State University, where she plans to finish up her degree"],
-        "challenges": ["Concerned about time management and the flexibility of her study schedule around work and family commitments", "First-generation college student", "Works to contribute to the family income"],
-        "characteristics": ["Needs clear, immediate applicability of learning to her job and future career goals", "Values collaborative projects and simulations that mimic real-world business challenges"],
-        "goals": ["Complete a CS Associate degree program at Merced College while also being the CAHSI Advocate and completing a research experience for undergraduate (REU) in AI LLM Research", "Provide for her family while investing in her career advancement"],
+        "goals": [""],
+        "completed_courses": [""],
+        "notes": ["Complete a CS Associate degree program at Merced College while also being the CAHSI Advocate and completing a research experience for undergraduate (REU) in AI LLM Research", "Provide for her family while investing in her career advancement"],
     }
     
 # Pydantic strucuted output for OpenAI model generated profile fields 
 class profileGenerator(BaseModel):
-    motivations: list[str]
-    challenges: list[str]
-    characteristics: list[str]
-    goals: list[str]
+    notes: list[str]
 
 
 def generate_field_via_gpt(student_profile):
@@ -135,7 +226,8 @@ def generate_field_via_gpt(student_profile):
         model="gpt-4o-2024-08-06",
         messages=[
             {"role": "system", "content": "You are an expert at profile field generation. You will \
-                                        be given college student profile fields and should generate relevant fields it into the given structure."},
+                                        be given college student profile, generate notes as the student \
+                                        that are effecting your transfer proccess, such as challenges and motivations into the given structure. Limit 3 strings"},
             {"role": "user", "content": "..."}
         ],
     response_format=profileGenerator,
@@ -163,6 +255,7 @@ def initialize_random_profile():
     random_gpa = round(random.uniform(0.0, 4.0), 2)
     random_major = random.choice(majors)
     random_transfer_schools = random.sample(schools, 2)
+    random_goal= "Transfer"
 
     
     # Context for field generation
@@ -172,7 +265,8 @@ def initialize_random_profile():
         "current_school": random_school,
         "gpa": random_gpa,
         "major": random_major,
-        "transfer_school": random_transfer_schools
+        "transfer_school": random_transfer_schools,
+        "goal": random_goal
     }
 
     # Generate text fields using ChatGPT
@@ -180,10 +274,7 @@ def initialize_random_profile():
 
 
     # Assign the indvidual generated text fields
-    motivations = fields.motivations
-    challenges = fields.challenges
-    characteristics = fields.characteristics
-    goals = fields.goals
+    notes = fields.notes
 
     # Return the randomized profile
     return {
@@ -192,10 +283,9 @@ def initialize_random_profile():
         "gpa": random_gpa,
         "major": random_major,
         "transfer_school": random_transfer_schools,
-        "motivation": motivations,
-        "challenges": challenges,
-        "characteristics": characteristics,
-        "goals": goals,
+        "notes": notes,
+        "goals": random_goal,
+        "completed_courses": ["CPSC-42", "CPSC-14", "MATH -04A"]
     }
 
     
@@ -259,21 +349,21 @@ def get_articulation_agreement(current_school, transfer_school, major):
     major_list = major if isinstance(major, list) else [major]
 
     # Query for each combination
-    for incoming_college, major_item in product(transfer_school_list, major_list):
+    for transfer_school, major_item in product(transfer_school_list, major_list):
         query = {
             "$and": [
-                {"incoming": incoming_college},
-                {"outgoing": current_school},
+                {"transfer_school": transfer_school},
+                {"current_school": current_school},
                 {"major": major_item}
             ]
         }
         try:
             # Execute query
             results = collection.find(query, projection={
-                "incoming": True,
-                "outgoing": True,
+                "transfer_school": True,
+                "current_school": True,
                 "major": True,
-                "text": True
+                "agreement": True
             })
 
             # Flag for indicating if an agreement was found 
@@ -281,22 +371,22 @@ def get_articulation_agreement(current_school, transfer_school, major):
             # Iterate through results
             for result in results:
                 found = True
-                text = result.get('text', 'No description available')
+                text = result.get('agreement', 'No description available')
                 test.append({
-                    text: f"{result['outgoing']} to {result['incoming']} for {result['major']}"
+                    text: f"{result['current_school']} to {result['transfer_school']} for {result['major']}"
                 })
             
             # If no results were found
             if not found:
                 test.append({
-                    f"No agreement for {incoming_college}": f"{current_school} with major {major_item}"
+                    f"No agreement for {transfer_school}": f"{current_school} with major {major_item}"
                 })
 
         except Exception as e:
             # Handle query exceptions
             test.append({
                 "Error querying articulation agreements": 
-                f"Query failed for {incoming_college} to {current_school} with major {major_item}: {e}"
+                f"Query failed for {transfer_school} to {current_school} with major {major_item}: {e}"
             })
 
     return test
