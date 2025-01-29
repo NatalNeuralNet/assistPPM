@@ -9,7 +9,7 @@ from itertools import product
 from dotenv import load_dotenv
 import os
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 client = OpenAI()
 
 # Load environment variables from the .env file
@@ -29,7 +29,7 @@ clientb = DataAPIClient(TOKEN)
 database = clientb.get_database(DB_API_ENDPOINT)
 
 # Getting collection from database
-collection = database.get_collection("COLLECTION_NAME3")
+collection = database.get_collection("ARTICULATION_AGREEMENTS")
 
 #Function for simulated student response
 '''
@@ -391,6 +391,19 @@ def get_articulation_agreement(current_school, transfer_school, major):
 
     return test
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 '''
 VERSION 2 functions
 
@@ -559,3 +572,4 @@ def scheduleGlue(prompt, student_profile, plan):
         response_format=FinalEdPlan
     )
     return completion.choices[0].message.parsed
+
