@@ -162,7 +162,7 @@ if 'Transfer' in profile['goals']:
         info = (" ").join([result['uc_areas'], result['semester_units'], result['school'] ])
     
     # articulation agreement
-    agreement=get_articulation_agreement(current_school, transfer_school, major)
+    st.write(get_articulation_agreement(current_school, transfer_school, major))
     # major education plan generation
     a = transferAgent2(initial_message, profile, agreement)
     # education plan extraction
