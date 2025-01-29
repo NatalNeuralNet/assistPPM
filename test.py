@@ -132,12 +132,6 @@ initial_message = (
 with st.sidebar.expander("Initial Prompt", expanded=False):
     initial_prompt = st.text_area("Edit Prompt", value=initial_message)
 
-# intial prompt for sidebar
-    # Sperate from the others so that the when [profile]changes are applied and streamlit reruns
-    # the intial message is updated which will update the intial prompt
-    # Intial prompt is necessary if we wish to structure intial message to LLM beyond simple profile changes.
-with st.sidebar.expander("Initial Prompt", expanded=False):
-    initial_prompt = st.text_area("Edit Prompt", value=initial_message)
 
 plan =[]
 
