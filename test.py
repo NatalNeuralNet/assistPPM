@@ -56,11 +56,6 @@ with st.sidebar.expander("Major"):
 # Transfer Schools
 with st.sidebar.expander("Transfer Schools"):
     transfer_school = st.multiselect("Enter Transfer School(s)", schools, default=profile["transfer_school"])
-
-# Transfer Schools
-with st.sidebar.expander("Transfer Schools"):
-    transfer_school = st.multiselect("Enter Transfer School(s)", schools, default=profile["transfer_school"])
-# Goals
 with st.sidebar.expander("Goals"):
     goals = st.multiselect("Enter Goal", profile['goals'],default=profile["goals"])
 # notes
